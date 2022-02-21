@@ -194,9 +194,9 @@ exp1_data %>%
 
 ```
 
-## Learning effect rtests on Szaszi et al
+## Learning effect retests on DBB
 
-### Load datasets
+### Load datasets, transform and create variables
 ```{r, message = FALSE, warning = FALSE}
 experiment_data <- read_delim("barna_sup/subject-1.csv", ",", escape_double = FALSE, trim_ws = TRUE, col_types = cols()) %>% 
   mutate(ID = 1)
@@ -235,7 +235,7 @@ formated_experiment_data <- experiment_data %>%
          right_c = map(Right, pic_to_base) %>% unlist(),
          response_value = map(Button_response, pic_to_value) %>% unlist()) %>%
   mutate(correct = response_value == pmax(left_value, right_value),
-         congruency = ifelse(left_value > right_value,
+         congruency = ifelse(left_value > right_value, #based on szaszi, I might got it wrong
                              ifelse(left_c == "s", "Incongruent", "Congruent"),
                              ifelse(right_c == "s", "Incongruent", "Congruent")
                              )
@@ -268,7 +268,7 @@ formated_experiment_data %>%
   {ggplot(.,aes(x = live_row, y = suc_rate, fill = congruency)) +
     #geom_bar(stat="identity", position=position_dodge()) +
     geom_smooth(method = "loess") +
-    ggtitle("Success rate vs. trial no. at instruction") +
+    ggtitle("Success rate vs. trial no. at congruency and instruction") +
     #coord_cartesian(ylim = c(min(.$suc_rate)*.75, 1)) +
     facet_grid(rows = vars(instruction)) +
     theme_minimal()}
@@ -283,7 +283,7 @@ formated_experiment_data %>%
   {ggplot(.,aes(x = live_row, y = suc_rate, fill = congruency)) +
     #geom_bar(stat="identity", position=position_dodge()) +
     geom_smooth(method = "loess") +
-    ggtitle("Success rate vs. trial no. at instruction and gender") +
+    ggtitle("Success rate vs. trial no. at congruency and instruction and gender") +
     #coord_cartesian(ylim = c(min(.$suc_rate)*.75, 1)) +
     facet_grid(rows = vars(instruction), cols = vars(gender)) +
     theme_minimal()}
