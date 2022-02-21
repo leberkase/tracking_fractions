@@ -1,0 +1,290 @@
+---
+title: "Denominator neglect data tests for learning effects"
+author: "Sándor Máté Csaba"
+date: "2/3/2022"
+output: html_document
+---
+## Learning effect rtests on Szaszi et al
+
+### Varaible map
+
+```{r, message = FALSE, warning = FALSE}
+library(tidyverse)
+readxl::read_excel("szaszi_sup/Description of the variables.xlsx")
+```
+
+### Experiment 1 data
+
+```{r, message = FALSE, warning = FALSE}
+exp1_data <- readr::read_delim("szaszi_sup/exp1_data.csv", 
+    ";", escape_double = FALSE, trim_ws = TRUE)
+
+summary(exp1_data)
+```
+
+### Experiment 2 data
+
+```{r, message = FALSE, warning = FALSE}
+exp2_data <- readr::read_delim("szaszi_sup/exp2_data.csv", 
+    ";", escape_double = FALSE, trim_ws = TRUE)
+summary(exp2_data)
+```
+
+## Experiment 2 raw data, testing if the mt package keeps the experiment order (spoiler alert, it does)
+
+```{r, message = FALSE, warning = FALSE}
+raw_data_exp2 <- read_delim("szaszi_sup/Raw_data exp2.csv", 
+    ";", escape_double = FALSE, trim_ws = TRUE)
+
+raw_data_exp2
+
+exp2_data %>% 
+  select(ID, RT) %>%
+  group_by(ID) %>%
+  slice_head(n = 3) %>%
+  mutate(row_number = row_number()) %>%
+  ungroup() %>%
+  left_join(raw_data_exp2 %>% 
+  select(ID, RT) %>%
+  group_by(ID) %>%
+  slice_head(n = 3) %>%
+  mutate(row_number = row_number()) %>%
+  ungroup(), by = c("ID","row_number")) %>%
+  mutate(diff = RT.x-RT.y)
+
+
+sum(raw_data_exp2$Left == raw_data_exp2$Right)
+```
+
+### Success rate vs trial no. controlled for congruency / first-last / numeracy / intelligence
+
+```{r, message = FALSE, warning = FALSE}
+#choose dataset
+szaszi_data <- exp1_data
+
+#only congruency
+szaszi_data %>%
+  mutate(IQ_cat = ifelse(IQ < 119,"Low","High")) %>%
+  mutate(numeracy_cat = ifelse(numeracy < 3,"Low","High")) %>%
+  mutate(outcome_first = Correct & !(CoM %% 2)) %>%
+  select(ID, mt_id, cong = Congruency_f, outcome_last = Correct, outcome_first, CoM, numeracy_cat, IQ_cat) %>%
+  pivot_longer(cols = c("outcome_first", "outcome_last"),
+               names_to = "outcome_type",
+               values_to = "outcome_value") %>%
+  group_by(ID) %>%
+  mutate(trial_no = seq_along(mt_id)) %>%
+  ungroup()  %>%
+  group_by(trial_no, cong, outcome_type) %>%
+  summarize(suc_rate = sum(outcome_value)/n(), .groups = "drop") %>%
+  {ggplot(.,aes(x = trial_no, y = suc_rate, fill = cong)) +
+    #geom_bar(stat="identity", position=position_dodge()) +
+    geom_smooth(method = "loess") +
+    ggtitle("Success rate vs. trial no. at congruency and first-last outcome") +
+    #coord_cartesian(ylim = c(min(.$suc_rate)*.75, 1)) +
+    theme_minimal() +
+    facet_grid(rows = vars(outcome_type))}
+
+#numeracy
+szaszi_data %>%
+  mutate(IQ_cat = ifelse(IQ < 119,"Low","High")) %>%
+  mutate(numeracy_cat = ifelse(numeracy < 3,"Low","High")) %>%
+  mutate(outcome_first = Correct & !(CoM %% 2)) %>%
+  select(ID, mt_id, cong = Congruency_f, outcome_last = Correct, outcome_first, CoM, numeracy_cat, IQ_cat) %>%
+  pivot_longer(cols = c("outcome_first", "outcome_last"),
+               names_to = "outcome_type",
+               values_to = "outcome_value") %>%
+  group_by(ID) %>%
+  mutate(trial_no = seq_along(mt_id)) %>%
+  ungroup()  %>%
+  group_by(trial_no, cong, outcome_type, numeracy_cat) %>%
+  summarize(suc_rate = sum(outcome_value)/n(), .groups = "drop") %>%
+  {ggplot(.,aes(x = trial_no, y = suc_rate, fill = cong)) +
+    #geom_bar(stat="identity", position=position_dodge()) +
+    geom_smooth(method = "loess") +
+    ggtitle("Success rate vs. trial no. at congruency and first-last outcome and numeracy") +
+    #coord_cartesian(ylim = c(min(.$suc_rate)*.75, 1)) +
+    theme_minimal() +
+    facet_grid(rows = vars(outcome_type), cols = vars(numeracy_cat))}
+
+#IQ
+szaszi_data %>%
+  mutate(IQ_cat = ifelse(IQ < 119,"Low","High")) %>%
+  mutate(numeracy_cat = ifelse(numeracy < 3,"Low","High")) %>%
+  mutate(outcome_first = Correct & !(CoM %% 2)) %>%
+  select(ID, mt_id, cong = Congruency_f, outcome_last = Correct, outcome_first, CoM, numeracy_cat, IQ_cat) %>%
+  pivot_longer(cols = c("outcome_first", "outcome_last"),
+               names_to = "outcome_type",
+               values_to = "outcome_value") %>%
+  group_by(ID) %>%
+  mutate(trial_no = seq_along(mt_id)) %>%
+  ungroup()  %>%
+  group_by(trial_no, cong, outcome_type, IQ_cat) %>%
+  summarize(suc_rate = sum(outcome_value)/n(), .groups = "drop") %>%
+  {ggplot(.,aes(x = trial_no, y = suc_rate, fill = cong)) +
+    #geom_bar(stat="identity", position=position_dodge()) +
+    geom_smooth(method = "loess") +
+    ggtitle("Success rate vs. trial no. at congruency and first-last outcome and IQ") +
+    coord_cartesian(ylim = c(min(.$suc_rate)*.75, 1)) +
+    theme_minimal() +
+    facet_grid(rows = vars(outcome_type), cols = vars(IQ_cat))}
+```
+
+### Change of Mind rate vs trial no. controlled for congruency / first-last / numeracy / intelligence
+
+```{r, message = FALSE, warning = FALSE}
+#choose dataset
+szaszi_data <- exp1_data
+
+#only congruency
+  
+szaszi_data %>%
+  mutate(IQ_cat = ifelse(IQ < 119,"Low","High")) %>%
+  mutate(numeracy_cat = ifelse(numeracy < 3,"Low","High")) %>%
+  select(ID, mt_id, cong = Congruency_f, CoM, IQ_cat, numeracy_cat) %>%
+  group_by(ID) %>%
+  mutate(trial_no = seq_along(mt_id)) %>%
+  ungroup() %>%
+  group_by(trial_no, cong) %>%
+  summarize(inst_rate = sum(CoM)/n()) %>%
+  {ggplot(.,aes(x = trial_no, y = inst_rate, fill = cong)) +
+    #geom_bar(stat="identity", position=position_dodge()) +
+    geom_smooth(method = "loess") +
+    ggtitle("Change of Mind rate vs. trial no. at congruency") +
+    #coord_cartesian(ylim = c(min(.$suc_rate)*.75, 1)) +
+    #facet_grid(cols = vars(IQ_cat)) +
+    theme_minimal()}
+
+#numeracy
+  
+szaszi_data %>%
+  mutate(IQ_cat = ifelse(IQ < 119,"Low","High")) %>%
+  mutate(numeracy_cat = ifelse(numeracy < 3,"Low","High")) %>%
+  select(ID, mt_id, cong = Congruency_f, CoM, IQ_cat, numeracy_cat) %>%
+  group_by(ID) %>%
+  mutate(trial_no = seq_along(mt_id)) %>%
+  ungroup() %>%
+  group_by(trial_no, cong, numeracy_cat) %>%
+  summarize(inst_rate = sum(CoM)/n()) %>%
+  {ggplot(.,aes(x = trial_no, y = inst_rate, fill = cong)) +
+    #geom_bar(stat="identity", position=position_dodge()) +
+    geom_smooth(method = "loess") +
+    ggtitle("Change of Mind rate vs. trial no. at congruency and numeracy") +
+    #coord_cartesian(ylim = c(min(.$suc_rate)*.75, 1)) +
+    facet_grid(cols = vars(numeracy_cat)) +
+    theme_minimal()}
+
+#IQ
+  
+exp1_data %>%
+  mutate(IQ_cat = ifelse(IQ < 119,"Low","High")) %>%
+  mutate(numeracy_cat = ifelse(numeracy < 3,"Low","High")) %>%
+  select(ID, mt_id, cong = Congruency_f, CoM, IQ_cat, numeracy_cat) %>%
+  group_by(ID) %>%
+  mutate(trial_no = seq_along(mt_id)) %>%
+  ungroup() %>%
+  group_by(trial_no, cong, IQ_cat) %>%
+  summarize(inst_rate = sum(CoM)/n()) %>%
+  {ggplot(.,aes(x = trial_no, y = inst_rate, fill = cong)) +
+    #geom_bar(stat="identity", position=position_dodge()) +
+    geom_smooth(method = "loess") +
+    ggtitle("Change of Mind rate vs. trial no. at congruency and IQ") +
+    #coord_cartesian(ylim = c(min(.$suc_rate)*.75, 1)) +
+    facet_grid(cols = vars(IQ_cat)) +
+    theme_minimal()}
+
+```
+
+## Learning effect rtests on Szaszi et al
+
+### Load datasets
+```{r, message = FALSE, warning = FALSE}
+experiment_data <- read_delim("barna_sup/subject-1.csv", ",", escape_double = FALSE, trim_ws = TRUE, col_types = cols()) %>% 
+  mutate(ID = 1)
+for(i in seq(2,185)){
+  fname <- paste0("barna_sup/subject-",i,".csv")
+  if(file.exists(fname)){
+    experiment_data <- experiment_data %>%
+      bind_rows(
+        read_delim(fname, ",", escape_double = FALSE, trim_ws = TRUE, col_types = cols()) %>% 
+          mutate(ID = i)
+      )
+  }
+}
+
+pic_to_value <- function(x){
+  if(substr(x,1,1) == "s"){
+    return(substr(x,2,2) %>% as.numeric() %>% {./10})
+  }else{
+    return(x  %>% as.numeric() %>% {./100})
+  }
+}
+
+pic_to_base <- function(x){
+  if(substr(x,1,1) == "s"){
+    return("s")
+  }else{
+    return("b")
+  }
+}
+
+formated_experiment_data <- experiment_data %>%
+  drop_na(any_of(c("Button_response","Left","Right"))) %>%
+  mutate(left_value = map(Left, pic_to_value) %>% unlist(),
+         left_c = map(Left, pic_to_base) %>% unlist(),
+         right_value = map(Right, pic_to_value) %>% unlist(),
+         right_c = map(Right, pic_to_base) %>% unlist(),
+         response_value = map(Button_response, pic_to_value) %>% unlist()) %>%
+  mutate(correct = response_value == pmax(left_value, right_value),
+         congruency = ifelse(left_value > right_value,
+                             ifelse(left_c == "s", "Incongruent", "Congruent"),
+                             ifelse(right_c == "s", "Incongruent", "Congruent")
+                             )
+         )
+```
+### Success rate vs trial no. controlled for instuction / gender
+
+```{r}
+#basic
+formated_experiment_data %>%
+  mutate(instruction = ifelse(is.na(instruction),"Not","Instructed")) %>%
+  select(ID, live_row, correct, congruency, instruction, income_level, gender, handedness) %>%
+  drop_na() %>%
+  group_by(live_row, congruency) %>%
+  summarize(suc_rate = sum(correct)/n(), .groups = "drop") %>%
+  {ggplot(.,aes(x = live_row, y = suc_rate, fill = congruency)) +
+    #geom_bar(stat="identity", position=position_dodge()) +
+    geom_smooth(method = "loess") +
+    ggtitle("Success rate vs. trial no. at congruency") +
+    #coord_cartesian(ylim = c(min(.$suc_rate)*.75, 1)) +
+    #facet_grid(rows = vars(outcome_type)) +
+    theme_minimal()}
+#basic
+formated_experiment_data %>%
+  mutate(instruction = ifelse(is.na(instruction),"Not","Instructed")) %>%
+  select(ID, live_row, correct, congruency, instruction, income_level, gender, handedness) %>%
+  drop_na() %>%
+  group_by(live_row, congruency, instruction) %>%
+  summarize(suc_rate = sum(correct)/n(), .groups = "drop") %>%
+  {ggplot(.,aes(x = live_row, y = suc_rate, fill = congruency)) +
+    #geom_bar(stat="identity", position=position_dodge()) +
+    geom_smooth(method = "loess") +
+    ggtitle("Success rate vs. trial no. at instruction") +
+    #coord_cartesian(ylim = c(min(.$suc_rate)*.75, 1)) +
+    facet_grid(rows = vars(instruction)) +
+    theme_minimal()}
+
+#gender
+formated_experiment_data %>%
+  mutate(instruction = ifelse(is.na(instruction),"Not","Instructed")) %>%
+  select(ID, live_row, correct, congruency, instruction, income_level, gender, handedness) %>%
+  drop_na() %>%
+  group_by(live_row, congruency, instruction, gender) %>%
+  summarize(suc_rate = sum(correct)/n(), .groups = "drop") %>%
+  {ggplot(.,aes(x = live_row, y = suc_rate, fill = congruency)) +
+    #geom_bar(stat="identity", position=position_dodge()) +
+    geom_smooth(method = "loess") +
+    ggtitle("Success rate vs. trial no. at instruction and gender") +
+    #coord_cartesian(ylim = c(min(.$suc_rate)*.75, 1)) +
+    facet_grid(rows = vars(instruction), cols = vars(gender)) +
+    theme_minimal()}
+```
